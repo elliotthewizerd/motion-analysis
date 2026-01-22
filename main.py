@@ -66,8 +66,7 @@ class AITrainer:
             if angle < 30:
                 feedback = "SAI: Gap qua sat!"
                 is_correct = False
-            
-            # 2. Kiểm tra duỗi tay
+                        # 2. Kiểm tra duỗi tay
             elif angle > 160:
                 feedback = "Duoi tay tot (READY)"
             elif angle > 120:
@@ -103,6 +102,7 @@ class AITrainer:
 
                 # Xử lý ảnh: Lật ngược -> Chuyển RGB -> MediaPipe
                 frame = cv2.flip(frame, 1)
+                
                 image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 image.flags.writeable = False
                 results = pose.process(image)
@@ -327,15 +327,50 @@ class AppGUI:
                   command=self.show_home_screen).pack(pady=40)
 
     def start_session(self, mode):
-        # Ẩn GUI
+        # 1. Ẩn giao diện chính để chạy Camera
         self.root.withdraw()
-        
-        # Chạy AI
+
+        # 2. Chạy AI và nhận kết quả trả về
+        # Kết quả là dictionary: {'reps': ..., 'violations': ..., 'rom': ...}
         data = self.ai_trainer.run_exercise(mode)
-        
-        # Hiện lại GUI và hiện kết quả (có thể mở rộng thêm màn hình Report)
+
+        # 3. Hiện lại giao diện chính
         self.root.deiconify()
-        print(f"Kết quả buổi tập: {data}")
+
+        # --- PHẦN CODE MỚI: LƯU RA FILE ---
+        
+        # Tạo tên file dựa trên thời gian thực để không bị trùng
+        # Ví dụ: ket_qua_squat_2023-10-25_14-30-00.txt
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"ket_qua_{mode}_{timestamp}.txt"
+
+        try:
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write("=== BÁO CÁO KẾT QUẢ TẬP LUYỆN ===\n")
+                f.write(f"Bài tập: {mode.upper()}\n")
+                f.write(f"Thời gian: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n")
+                f.write("-" * 30 + "\n")
+                f.write(f"Số lần tập (Reps): {data['reps']}\n")
+                f.write(f"Số lỗi vi phạm:   {data['violations']}\n")
+                f.write(f"Biên độ (ROM):    {int(data['rom'])} độ\n")
+                f.write("-" * 30 + "\n")
+                
+                # Đánh giá sơ bộ dựa trên số lỗi
+                if data['violations'] == 0:
+                    danh_gia = "Xuất sắc! Không mắc lỗi nào."
+                elif data['violations'] <= 2:
+                    danh_gia = "Tốt, nhưng cần chú ý kỹ thuật hơn."
+                else:
+                    danh_gia = "Cần cải thiện kỹ thuật để tránh chấn thương."
+                f.write(f"Đánh giá: {danh_gia}\n")
+
+            print(f"Đã lưu kết quả vào file: {filename}")
+            
+            # (Tùy chọn) Hiển thị thông báo nhỏ lên màn hình (cần import messagebox)
+            # tk.messagebox.showinfo("Hoàn thành", f"Đã lưu file: {filename}")
+
+        except Exception as e:
+            print(f"Lỗi khi lưu file: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
